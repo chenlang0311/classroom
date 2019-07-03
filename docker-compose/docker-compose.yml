@@ -1,0 +1,110 @@
+version: '2'
+
+services:
+  classroom-mysql:
+    container_name: ${MYSQL_CONTAINER_NAME}
+    image: ${MYSQL_IMAGE}
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - ./data/mysql/conf.d:/etc/mysql/conf.d
+      - ./data/mysql/data:/var/lib/mysql
+      - ./data/mysql/docker-entrypoint-initdb.d/:/docker-entrypoint-initdb.d/
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      classroom:
+        ipv4_address: ${MYSQL_IPV4}
+
+  classroom-redis:
+    container_name: ${REDIS_CONTAINER_NAME}
+    image: ${REDIS_IMAGE}
+    restart: always
+    volumes:
+      - ./data/redis/data:/data
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      classroom:
+        ipv4_address: ${REDIS_IPV4}
+
+  classroom-api:
+    container_name: ${API_CONTAINER_NAME}
+    image: ${API_IMAGE}
+    restart: always
+    tty: true
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_IPV4: ${MYSQL_IPV4}
+      REDIS_IPV4: ${REDIS_IPV4}
+      CLASSROOM_IP: ${CLASSROOM_IP}
+      CLASSROOM_PORT: ${CLASSROOM_PORT}
+    volumes:
+      - ./data/crm/public:/data/public
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - classroom-mysql
+      - classroom-redis
+    extra_hosts:
+      - ${MYSQL_HOST_MAP}
+      - ${REDIS_HOST_MAP}
+      - ${API_HOST_MAP}
+      - ${CRM_HOST_MAP}
+      - ${CLI_HOST_MAP}
+    networks:
+      classroom:
+        ipv4_address: ${API_IPV4}
+
+  classroom-crm:
+    container_name: ${CRM_CONTAINER_NAME}
+    image: ${CRM_IMAGE}
+    restart: always
+    tty: true
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_IPV4: ${MYSQL_IPV4}
+      REDIS_IPV4: ${REDIS_IPV4}
+      CLASSROOM_IP: ${CLASSROOM_IP}
+      CLASSROOM_PORT: ${CLASSROOM_PORT}
+    volumes:
+      - ./data/crm/public:/data/public
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - classroom-mysql
+      - classroom-redis
+    extra_hosts:
+      - ${MYSQL_HOST_MAP}
+      - ${REDIS_HOST_MAP}
+      - ${API_HOST_MAP}
+      - ${CRM_HOST_MAP}
+      - ${CLI_HOST_MAP}
+    networks:
+      classroom:
+        ipv4_address: ${CRM_IPV4}
+
+  classroom-cli:
+    container_name: ${CLI_CONTAINER_NAME}
+    image: ${CLI_IMAGE}
+    restart: always
+    tty: true
+    ports:
+      - ${CLI_PORTS_80}
+      - ${CLI_PORTS_443}
+    volumes:
+      - ./data/crm/public:/data/public
+      - /etc/localtime:/etc/localtime:ro
+    extra_hosts:
+      - ${MYSQL_HOST_MAP}
+      - ${REDIS_HOST_MAP}
+      - ${API_HOST_MAP}
+      - ${CRM_HOST_MAP}
+      - ${CLI_HOST_MAP}
+    networks:
+      classroom:
+        ipv4_address: ${CLI_IPV4}
+
+networks:
+  classroom:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${CLASSROOM_SUBNET}
